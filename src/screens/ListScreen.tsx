@@ -88,8 +88,8 @@ const styles = StyleSheet.create({
   },
   addButton: {
     position: 'absolute',
-    right: 20,
-    bottom: 20,
+    right: 30,
+    bottom: 30,
     width: 60,
     height: 60,
     justifyContent: 'center',

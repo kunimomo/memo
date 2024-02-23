@@ -1,14 +1,11 @@
 import React, { useState, useEffect, useLayoutEffect } from 'react';
 import { View, TextInput, Button, StyleSheet, Alert, TouchableOpacity, Text } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useFocusEffect } from '@react-navigation/native';
 
 const EditScreen = ({ route, navigation }) => {
   const { id } = route.params;
   const [text, setText] = useState('');
-  const [isFocused, setIsFocused] = useState(false);
-
-  const handleFocus = () => setIsFocused(true);
-  const handleBlur = () => setIsFocused(false);
   
   // メモを保存する
   const handleSave = async () => {
@@ -23,7 +20,6 @@ const EditScreen = ({ route, navigation }) => {
         await handleDelete();
 	return;
       }
-      navigation.goBack();
     } catch(e) {
       console.log(e);
       Alert.alert('エラー', 'メモの保存に失敗しました');
@@ -37,7 +33,7 @@ const EditScreen = ({ route, navigation }) => {
       const memos = storedMemos ? JSON.parse(storedMemos) : [];
       const newMemos = memos.filter(memo => memo.id !== id);
       await AsyncStorage.setItem('memos', JSON.stringify(newMemos));
-      navigation.goBack();
+      navigation.navigate('List');
     } catch(e) {
       console.log(e);
       Alert.alert('エラー', 'メモの削除に失敗しました');
@@ -60,18 +56,32 @@ const EditScreen = ({ route, navigation }) => {
   useLayoutEffect(() => {
     navigation.setOptions({
       headerRight: () => (
-        isFocused ? (
-	<TouchableOpacity onPress={handleSave} style={{ marginRight: 20 }}>
-          <Text style={{ color: 'rgb(255,150,150)', fontSize: 16 }}>完了</Text>
-	</TouchableOpacity>
-	) : (
         <TouchableOpacity onPress={showOptions} style={{ marginRight: 20 }}>
           <Text style={{ color: 'rgb(255,150,150)', fontSize: 24 }}>...</Text>
         </TouchableOpacity>
-	)
       ),
     });
-  }, [navigation, isFocused, handleSave]);
+  }, [navigation, handleSave]);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      const onBackPress = async () => {
+        await handleSave();
+      };
+
+      const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+        // デフォルトのイベントをキャンセル
+	e.preventDefault();
+
+        onBackPress().then(() => {
+	  // 保存処理後に元の画面遷移を実行
+          navigation.dispatch(e.data.action);
+        });
+      });
+
+      return unsubscribe;
+    }, [navigation, text])
+  );
 
   const showOptions = () => {
     Alert.alert(
@@ -93,8 +103,6 @@ const EditScreen = ({ route, navigation }) => {
         onChangeText={setText}
 	multiline={true}
 	scrollEnabled={true}
-	onFocus={handleFocus}
-	onBlur={handleBlur}
       />
     </View>
   );

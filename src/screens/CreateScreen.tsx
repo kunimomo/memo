@@ -1,6 +1,7 @@
 import React, { useState, useLayoutEffect, useCallback } from 'react';
 import { View, TextInput, Button, StyleSheet, Alert, TouchableOpacity, Text } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useFocusEffect } from '@react-navigation/native';
 import { v4 as uuidv4 } from 'uuid';
 
 const CreateScreen = ({ navigation }) => {
@@ -18,14 +19,13 @@ const CreateScreen = ({ navigation }) => {
       }
       // 更新されたメモリストを保存
       await AsyncStorage.setItem('memos', JSON.stringify(memos));
-      // 保存成功後、一覧画面へ戻る
-      navigation.goBack();
     } catch (e) {
       console.error(e);
       Alert.alert('エラー', 'メモの保存に失敗しました。');
     }
   }, [text, navigation]);
-
+  
+  /**
   useLayoutEffect(() => {
     navigation.setOptions({
       headerRight: () => (
@@ -35,6 +35,27 @@ const CreateScreen = ({ navigation }) => {
       ),
     });
   }, [navigation, handleSave]);
+  **/
+
+  useFocusEffect(
+    React.useCallback(() => {
+      const onBackPress = async () => {
+        await handleSave();
+      };
+
+      const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+        // デフォルトのイベントをキャンセル
+	e.preventDefault();
+
+        onBackPress().then(() => {
+	  // 保存処理後に元の画面遷移を実行
+          navigation.dispatch(e.data.action);
+        });
+      });
+
+      return unsubscribe;
+    }, [navigation, text])
+  );
 
   return (
     <View style={styles.container}>
